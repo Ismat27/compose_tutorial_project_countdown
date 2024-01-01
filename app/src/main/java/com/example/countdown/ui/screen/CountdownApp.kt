@@ -1,6 +1,5 @@
 package com.example.countdown.ui.screen
 
-import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,94 +10,37 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.countdown.ui.CountdownViewModel
+import com.example.countdown.ui.formatTimeRemain
 import com.example.countdown.ui.theme.CountdownTheme
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
-data class TimeRemain(
-    val days: String,
-    val hours: String,
-    val minutes: String,
-    val seconds: String
-)
-
-class Counter(
-    days: Long = 0,
-    hours: Long = 0,
-    minutes: Long = 0,
-    seconds: Long = 0
+@Composable
+fun CountdownApp(
+    modifier: Modifier = Modifier,
+    cViewModel: CountdownViewModel = viewModel()
 ) {
 
-    private var timeRemaining by mutableLongStateOf(
-        days * 24 * 3600 * 1000 + hours * 3600 * 1000 + minutes * 60 * 1000 + seconds * 1000
-    )
+    val uiState by cViewModel.uiState.collectAsState()
 
-    suspend fun start() {
-        try {
-            while (timeRemaining > 0) {
-                delay(1000)
-                timeRemaining -= 1000
-            }
-        } catch (e: Exception) {
-            Log.d("", e.message ?: "error in Counter:start")
-        }
+    val timeRemain = uiState.formatTimeRemain()
 
-    }
 
-    private fun formatTimeUnit(unit: Int): String {
-        return if (unit < 10) "0$unit" else unit.toString()
-    }
-
-    fun timeRemain(milliseconds: Long = timeRemaining): TimeRemain {
-        val seconds = (milliseconds / 1000).toInt()
-        val minutes = seconds / 60
-        val hours = minutes / 60
-        val days = hours / 24
-
-        val remainingHours = formatTimeUnit(hours % 24)
-        val remainingMinutes = formatTimeUnit(minutes % 60)
-        val remainingSeconds = formatTimeUnit(seconds % 60)
-
-        return TimeRemain(
-            formatTimeUnit(days),
-            remainingHours,
-            remainingMinutes,
-            remainingSeconds
-        )
-    }
-
-}
-
-@Composable
-fun CountdownApp(modifier: Modifier = Modifier) {
-
-    val counter = remember {
-        Counter(days = 1)
-    }
-
-    val timeRemain = counter.timeRemain()
-
-    var isTicking by remember {
-        mutableStateOf(true)
-    }
-
-    if (isTicking) {
-        LaunchedEffect(counter) {
+    if (uiState.isTicking) {
+        LaunchedEffect(uiState) {
             coroutineScope {
-                launch { counter.start() }
+                launch { cViewModel.beginCounting() }
             }
-            isTicking = false
+            cViewModel.resetCounting()
         }
     }
 
